@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: inkly
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and test backend
+        run: |
+          cd inkly-backend
+          docker build -t inkly-backend-test .
+          docker run --rm \
+            --network host \
+            -e DATABASE_URL="postgresql://user:password@localhost:5432/inkly?schema=public" \
+            -e REDIS_HOST=localhost \
+            -e REDIS_PORT=6379 \
+            -e JWT_SECRET=test-secret \
+            inkly-backend-test npm test
+
+      - name: Build and test frontend
+        run: |
+          cd inkly-frontend
+          docker build -t inkly-frontend-test .
+          docker run --rm \
+            -e NEXT_PUBLIC_API_URL=http://localhost:3001/api \
+            inkly-frontend-test npm test

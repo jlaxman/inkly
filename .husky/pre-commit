@@ -1,0 +1,33 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🧪 Running tests before commit..."
+
+# Check if Docker containers are running
+if ! command -v docker-compose &> /dev/null; then
+  echo "⚠️  docker-compose not found. Skipping tests."
+  exit 0
+fi
+
+if ! docker-compose ps | grep -q "inkly-backend.*Up"; then
+  echo "⚠️  Docker containers are not running. Skipping tests."
+  echo "   Start containers with: docker-compose up -d"
+  exit 0
+fi
+
+# Run tests in Docker containers
+echo "🐳 Running tests in Docker containers..."
+
+echo "📦 Testing backend..."
+docker-compose exec -T backend npm test -- --passWithNoTests || {
+  echo "❌ Backend tests failed!"
+  exit 1
+}
+
+echo "🎨 Testing frontend..."
+docker-compose exec -T frontend npm test -- --passWithNoTests || {
+  echo "❌ Frontend tests failed!"
+  exit 1
+}
+
+echo "✅ All tests passed!"

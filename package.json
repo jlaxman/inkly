@@ -1,0 +1,34 @@
+{
+  "name": "inkly",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Premium e-commerce platform for custom apparel, gifts, and more",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/inkly.git"
+  },
+  "keywords": [
+    "e-commerce",
+    "nestjs",
+    "nextjs",
+    "docker",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "start": "./start-docker.sh",
+    "stop": "docker-compose down",
+    "logs": "docker-compose logs -f",
+    "test": "./run-tests-docker.sh",
+    "seed": "docker-compose exec -T backend npx ts-node prisma/seed.ts",
+    "prepare": "husky install"
+  },
+  "workspaces": [
+    "inkly-frontend",
+    "inkly-backend"
+  ],
+  "devDependencies": {
+    "husky": "^8.0.3"
+  }
+}
