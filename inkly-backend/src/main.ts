@@ -13,9 +13,12 @@ async function bootstrap() {
   app.use(helmet());
   app.use(compression());
 
-  // Enable CORS
+  // CORS: use FRONTEND_URL in production, localhost in development
+  const origins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',').map((o) => o.trim()).filter(Boolean)
+    : ['http://localhost:3000'];
   app.enableCors({
-    origin: process.env.FRONTEND_URL?.split(',') || ['http://localhost:3000'],
+    origin: origins.length ? origins : ['http://localhost:3000'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -60,17 +63,19 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
-  });
+  if (process.env.NODE_ENV !== 'production') {
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: { persistAuthorization: true },
+    });
+  }
 
   const port = process.env.PORT || 3001;
   await app.listen(port);
 
-  logger.log(`🚀 Application is running on: http://localhost:${port}`);
-  logger.log(`📚 Swagger documentation: http://localhost:${port}/api/docs`);
-  logger.log(`🏥 Health check: http://localhost:${port}/api/health`);
+  logger.log(`Application running on port ${port} (${process.env.NODE_ENV || 'development'})`);
+  if (process.env.NODE_ENV !== 'production') {
+    logger.log(`Swagger: http://localhost:${port}/api/docs`);
+  }
+  logger.log(`Health: http://localhost:${port}/api/health`);
 }
 bootstrap();

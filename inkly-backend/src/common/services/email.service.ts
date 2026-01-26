@@ -5,23 +5,28 @@ import * as nodemailer from 'nodemailer';
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: nodemailer.Transporter;
+  private transporter: nodemailer.Transporter | null = null;
 
   constructor(private configService: ConfigService) {
-    // For production, configure with real SMTP settings
-    // For development, you can use services like Mailtrap or Ethereal
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com'),
-      port: this.configService.get<number>('SMTP_PORT', 587),
-      secure: false,
-      auth: {
-        user: this.configService.get<string>('SMTP_USER'),
-        pass: this.configService.get<string>('SMTP_PASS'),
-      },
-    });
+    const user = this.configService.get<string>('SMTP_USER');
+    const pass = this.configService.get<string>('SMTP_PASS');
+    if (user && pass) {
+      this.transporter = nodemailer.createTransport({
+        host: this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com'),
+        port: this.configService.get<number>('SMTP_PORT', 587),
+        secure: false,
+        auth: { user, pass },
+      });
+    } else {
+      this.logger.warn('SMTP not configured (SMTP_USER/SMTP_PASS missing). Emails will be skipped.');
+    }
   }
 
   async sendEmail(to: string, subject: string, html: string, text?: string): Promise<boolean> {
+    if (!this.transporter) {
+      this.logger.debug(`Email skipped (no SMTP): ${subject} -> ${to}`);
+      return false;
+    }
     try {
       const mailOptions = {
         from: this.configService.get<string>('SMTP_FROM', 'noreply@inkly.com'),

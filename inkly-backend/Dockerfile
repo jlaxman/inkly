@@ -1,28 +1,35 @@
-FROM node:24-alpine
+# Backend - Production Dockerfile (multi-stage)
+FROM node:24-alpine AS builder
 
 WORKDIR /app
+RUN apk add --no-cache openssl
 
-# Install Prisma dependencies and netcat for DB checking
-RUN apk add --no-cache openssl netcat-openbsd
-
-# Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
-
-# Install dependencies
 RUN npm install
 
-# Generate Prisma client (will be regenerated on start if DB changes)
-RUN npm run prisma:generate || true
-
-# Copy source code
 COPY . .
+RUN npm run prisma:generate
+RUN npm run build
 
-# Create uploads directory
+# Production stage
+FROM node:24-alpine AS production
+
+WORKDIR /app
+RUN apk add --no-cache openssl curl
+
+ENV NODE_ENV=production
+
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+
+RUN npm run prisma:generate
+
 RUN mkdir -p uploads
 
-# Expose port
 EXPOSE 3001
 
-# Start script will handle migrations
-CMD ["sh", "-c", "npm run prisma:generate && npx prisma db push && npm run start:dev"]
+# Migrations and start - override in compose if needed
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]

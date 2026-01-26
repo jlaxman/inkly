@@ -46,3 +46,6 @@ yarn-error.log*
 # Temporary files
 *.tmp
 *.temp
+
+# Local cloudflared binary (optional; use bin/cloudflared if not in PATH)
+bin/

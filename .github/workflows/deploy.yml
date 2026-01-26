@@ -1,41 +1,129 @@
-name: Deploy to Production
+# 2-stage deploy: gamma → prod (sequential, on success of previous)
+# Trigger: push to main
+# Requires: GitHub Environments (gamma, prod) with per-env secrets (see docs/DEPLOY_GITHUB.md)
+
+name: Deploy (Gamma → Prod)
 
 on:
   push:
     branches: [ main ]
-    tags:
-      - 'v*'
 
 jobs:
-  deploy:
+  deploy-gamma:
+    name: Deploy Gamma
     runs-on: ubuntu-latest
-    
+    environment: gamma
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Create .env.prod from secrets
         run: |
-          echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> .env.prod
-          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.prod
-          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> .env.prod
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env.prod
-          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env.prod
-          echo "JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}" >> .env.prod
-          echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> .env.prod
-          echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> .env.prod
-          echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env.prod
-          echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env.prod
-          echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env.prod
-          echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env.prod
-          echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env.prod
+          {
+            echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}"
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
+            echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}"
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}"
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}"
+            echo "JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}"
+            echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}"
+            echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}"
+            echo "CLOUDFLARE_TUNNEL_TOKEN=${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}"
+            echo "SMTP_HOST=${{ secrets.SMTP_HOST }}"
+            echo "SMTP_PORT=${{ secrets.SMTP_PORT }}"
+            echo "SMTP_USER=${{ secrets.SMTP_USER }}"
+            echo "SMTP_PASS=${{ secrets.SMTP_PASS }}"
+            echo "SMTP_FROM=${{ secrets.SMTP_FROM }}"
+          } > .env.prod
 
-      - name: Build and deploy
+      - name: Setup SSH
         run: |
-          docker-compose -f docker-compose.prod.yml build
-          docker-compose -f docker-compose.prod.yml up -d
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      # Add your deployment target here (e.g., SSH to server, AWS ECS, etc.)
+      - name: Sync code to server
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new" \
+            --exclude '.git' \
+            --exclude 'node_modules' \
+            --exclude '.next' \
+            --exclude 'coverage' \
+            --exclude 'dist' \
+            --exclude 'uploads' \
+            --exclude '.env.prod' \
+            --exclude '.husky' \
+            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
+
+      - name: Upload .env.prod
+        run: |
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            .env.prod ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/.env.prod
+
+      - name: Build and run on server
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "cd ${{ secrets.DEPLOY_PATH }} && docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.cloudflare.yml up -d --build"
+
+  deploy-prod:
+    name: Deploy Prod
+    runs-on: ubuntu-latest
+    environment: prod
+    needs: [ deploy-gamma ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create .env.prod from secrets
+        run: |
+          {
+            echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}"
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
+            echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}"
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}"
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}"
+            echo "JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}"
+            echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}"
+            echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}"
+            echo "CLOUDFLARE_TUNNEL_TOKEN=${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}"
+            echo "SMTP_HOST=${{ secrets.SMTP_HOST }}"
+            echo "SMTP_PORT=${{ secrets.SMTP_PORT }}"
+            echo "SMTP_USER=${{ secrets.SMTP_USER }}"
+            echo "SMTP_PASS=${{ secrets.SMTP_PASS }}"
+            echo "SMTP_FROM=${{ secrets.SMTP_FROM }}"
+          } > .env.prod
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Sync code to server
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new" \
+            --exclude '.git' \
+            --exclude 'node_modules' \
+            --exclude '.next' \
+            --exclude 'coverage' \
+            --exclude 'dist' \
+            --exclude 'uploads' \
+            --exclude '.env.prod' \
+            --exclude '.husky' \
+            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
+
+      - name: Upload .env.prod
+        run: |
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            .env.prod ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/.env.prod
+
+      - name: Build and run on server
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "cd ${{ secrets.DEPLOY_PATH }} && docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.cloudflare.yml up -d --build"

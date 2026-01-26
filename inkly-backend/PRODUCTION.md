@@ -1,105 +1,47 @@
-# Production Deployment Guide
+# Production Deployment
 
-## Environment Variables
+## Docker (recommended)
 
-Create a `.env` file with the following variables:
-
-```env
-# Application
-NODE_ENV=production
-PORT=3001
-
-# Database
-DATABASE_URL="postgresql://user:password@postgres:5432/inkly?schema=public"
-
-# JWT
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-JWT_EXPIRES_IN=7d
-
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# Email (SMTP)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-SMTP_FROM=noreply@inkly.com
-
-# Frontend URL (for CORS)
-FRONTEND_URL=https://yourdomain.com
-
-# AWS (Optional - for S3 file storage)
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_S3_BUCKET=inkly-media
-```
-
-## Security Checklist
-
-- [ ] Change `JWT_SECRET` to a strong random string
-- [ ] Use strong database passwords
-- [ ] Enable HTTPS/SSL
-- [ ] Configure CORS properly for production domains
-- [ ] Set up rate limiting (already configured)
-- [ ] Enable helmet security headers (already configured)
-- [ ] Use environment variables for all secrets
-- [ ] Set up proper logging and monitoring
-- [ ] Configure email service with real SMTP credentials
-- [ ] Set up file storage (S3 or similar) for production uploads
-
-## Database Migrations
+Use the root `docker-compose.prod.yml` with `.env.prod`:
 
 ```bash
-# Generate migration
-npm run prisma:migrate
+# From project root
+cp .env.prod.example .env.prod
+# Edit .env.prod with real values
 
-# In production, use:
-npx prisma migrate deploy
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 ```
 
-## Building for Production
+Backend and frontend use production Dockerfiles (multi-stage, healthchecks). Migrations run automatically (`prisma migrate deploy`).
 
-```bash
-# Build the application
-npm run build
+## Environment variables
 
-# Start production server
-npm run start:prod
-```
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `JWT_SECRET` | Yes | Secret for JWT signing |
+| `FRONTEND_URL` | Yes (prod) | Allowed CORS origin(s), comma-separated |
+| `NEXT_PUBLIC_API_URL` | Yes | API base URL (frontend build-time) |
+| `POSTGRES_*` | Yes | Used by Postgres service |
+| `SMTP_*` | No | If unset, emails are skipped |
 
-## Docker Production
+## Security
 
-The Docker setup is already configured. For production:
+- [ ] Set strong `JWT_SECRET` (e.g. `openssl rand -hex 32`)
+- [ ] Use strong `POSTGRES_PASSWORD` and secure `DATABASE_URL`
+- [ ] Set `FRONTEND_URL` to your production frontend domain(s)
+- [ ] Use HTTPS (reverse proxy in front of Docker)
+- [ ] Swagger is **disabled** in production (`NODE_ENV=production`)
 
-1. Update `docker-compose.yml` with production environment variables
-2. Use production database (not local)
-3. Configure proper volumes for uploads
-4. Set up reverse proxy (nginx/traefik)
-5. Enable SSL/TLS
+## Database
 
-## Monitoring
+- Migrations: `prisma/migrations/` — applied automatically on startup via `prisma migrate deploy`
+- Do **not** use `prisma db push` in production
 
-- Set up application monitoring (e.g., Sentry, DataDog)
-- Configure health check endpoints
-- Set up log aggregation
-- Monitor database connections
-- Monitor Redis connections
+## Health
 
-## Performance Optimization
+- `GET /api/health` — used by Docker healthcheck and load balancers
 
-- Enable Redis caching (already integrated)
-- Use CDN for static assets
-- Optimize database queries
-- Enable compression (already configured)
-- Set up database connection pooling
+## Rate limiting
 
-## API Documentation
-
-Swagger documentation is available at: `/api/docs`
-
-## Rate Limiting
-
-Currently set to 100 requests per minute per IP. Adjust in `app.module.ts` if needed.
+100 requests/minute per IP (Throttler). Adjust in `app.module.ts` if needed.

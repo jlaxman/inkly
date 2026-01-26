@@ -18,6 +18,7 @@
   "license": "MIT",
   "scripts": {
     "start": "./start-docker.sh",
+    "tunnel": "./start-tunnel.sh",
     "stop": "docker-compose down",
     "logs": "docker-compose logs -f",
     "test": "./run-tests-docker.sh",

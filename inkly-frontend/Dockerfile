@@ -1,18 +1,34 @@
-FROM node:24-alpine
+# Frontend - Production Dockerfile (multi-stage, Next.js standalone)
+ARG NEXT_PUBLIC_API_URL=http://localhost:3001/api
+FROM node:24-alpine AS builder
 
 WORKDIR /app
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy source code
 COPY . .
+RUN npm run build
 
-# Expose port
+# Production stage - standalone output
+FROM node:24-alpine AS production
+
+WORKDIR /app
+ENV NODE_ENV=production
+RUN apk add --no-cache curl
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
 EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-# Start in development mode
-CMD ["npm", "run", "dev"]
+CMD ["node", "server.js"]

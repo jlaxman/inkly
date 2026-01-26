@@ -23,6 +23,15 @@ That's it! Visit:
 - **Backend API**: http://localhost:3001/api
 - **API Docs**: http://localhost:3001/api/docs
 
+### Free public URL (Cloudflare Tunnel)
+
+```bash
+# Install cloudflared first: brew install cloudflared (macOS)
+./start-tunnel.sh
+```
+
+Visit the `https://xxx.trycloudflare.com` URL printed — that's your public Inkly. See **`docs/DEPLOY_FREE.md`**.
+
 ## Frontend-Backend Communication
 
 ✅ **Frontend is connected to backend!**
@@ -63,8 +72,24 @@ docker-compose exec backend npx ts-node prisma/seed.ts  # Seed database
 
 That's it! Everything runs in Docker.
 
+## Production
+
+```bash
+cp .env.prod.example .env.prod
+# Edit .env.prod, then:
+./deploy.sh
+```
+
+See **PRODUCTION.md** for details.
+
 ## Documentation
 
 - **Backend**: `inkly-backend/README.md`
 - **Frontend**: `inkly-frontend/README.md`
-- **Detailed docs**: See `docs/` folders in each service
+- **Production**: `PRODUCTION.md`
+- **Deploy & public URL**: `docs/DEPLOYMENT_OPTIONS.md`
+- **Buy inkly.co.in & deploy**: `docs/DOMAIN_AND_DEPLOY.md`
+- **Public URLs (www.inkly.co.in, gamma.inkly.co.in)**: `docs/PUBLIC_URLS.md`
+- **2-stage deploy (Gamma → Prod)**: `docs/DEPLOY_GITHUB.md`
+- **Free deploy (no domain)**: `docs/DEPLOY_FREE.md`
+- **Detailed docs**: See `docs/` in each service

@@ -1,0 +1,19 @@
+# Override for Cloudflare Tunnel (free public URL)
+# Use: docker compose -f docker-compose.yml -f docker-compose.tunnel.yml up -d
+# Then: cloudflared tunnel --url http://localhost:8080
+
+services:
+  frontend:
+    environment:
+      NEXT_PUBLIC_API_URL: /api
+
+  nginx:
+    image: nginx:alpine
+    container_name: inkly-nginx-tunnel
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx/tunnel.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend

@@ -32,7 +32,7 @@ services:
   backend:
     build:
       context: ./inkly-backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: inkly-backend
     ports:
       - "3001:3001"
@@ -58,7 +58,7 @@ services:
   frontend:
     build:
       context: ./inkly-frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: inkly-frontend
     ports:
       - "3000:3000"

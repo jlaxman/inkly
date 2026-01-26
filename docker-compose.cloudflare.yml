@@ -1,0 +1,27 @@
+# Cloudflare Tunnel override for Gamma & Prod
+# Use: docker compose -f docker-compose.prod.yml -f docker-compose.cloudflare.yml --env-file .env.prod up -d
+# Requires: CLOUDFLARE_TUNNEL_TOKEN in .env.prod (see docs/CLOUDFLARE_SETUP.md).
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: inkly-nginx-cloudflare
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx/tunnel.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+    networks:
+      - inkly-network
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: inkly-cloudflared
+    network_mode: host
+    command: tunnel run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - nginx
+    restart: unless-stopped
