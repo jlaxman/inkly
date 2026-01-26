@@ -2,6 +2,8 @@
 
 Premium e-commerce platform built with Next.js and NestJS.
 
+![Inkly Homepage](./assets/inkly-homepage.png)
+
 **🚨 Docker is MANDATORY - This project runs entirely in Docker containers.**
 
 ## Quick Start
@@ -23,26 +25,7 @@ That's it! Visit:
 - **Backend API**: http://localhost:3001/api
 - **API Docs**: http://localhost:3001/api/docs
 
-## Live Site
-
-**Get a free public URL instantly:**
-
-```bash
-./start-tunnel.sh
-```
-
-This starts Inkly in Docker and creates a **Cloudflare Tunnel** — you'll get a URL like `https://xxx.trycloudflare.com` that you can share publicly. No hosting required!
-
-**For production with custom domains** (www.inkly.co.in, gamma.inkly.co.in), see **`docs/CLOUDFLARE_SETUP.md`** and **`docs/DEPLOY_GITHUB.md`**.
-
-### Free public URL (Cloudflare Tunnel)
-
-```bash
-# Install cloudflared first: brew install cloudflared (macOS)
-./start-tunnel.sh
-```
-
-Visit the `https://xxx.trycloudflare.com` URL printed — that's your public Inkly. See **`docs/DEPLOY_FREE.md`**.
+**For production deployment with custom domains** (www.inkly.co.in, gamma.inkly.co.in), see **`docs/CLOUDFLARE_SETUP.md`** and **`docs/DEPLOY_GITHUB.md`**.
 
 ## Frontend-Backend Communication
 
