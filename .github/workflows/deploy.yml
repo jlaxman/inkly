@@ -62,11 +62,30 @@ jobs:
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
             .env.prod ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/.env.prod
 
+      - name: Verify server prerequisites
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "cd ${{ secrets.DEPLOY_PATH }} && \
+            echo '=== Checking prerequisites ===' && \
+            docker --version || (echo 'ERROR: Docker not found' && exit 1) && \
+            docker compose version || (echo 'ERROR: Docker Compose not found' && exit 1) && \
+            test -f docker-compose.prod.yml || (echo 'ERROR: docker-compose.prod.yml not found' && exit 1) && \
+            echo 'Prerequisites OK'"
+
       - name: Build and run on server
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "cd ${{ secrets.DEPLOY_PATH }} && docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.cloudflare.yml up -d --build"
+            "cd ${{ secrets.DEPLOY_PATH }} && \
+            set -e && \
+            if [ -f docker-compose.cloudflare.yml ] && grep -q 'CLOUDFLARE_TUNNEL_TOKEN=' .env.prod 2>/dev/null && [ -n \"\$(grep 'CLOUDFLARE_TUNNEL_TOKEN=' .env.prod | cut -d'=' -f2 | tr -d ' ')\" ]; then \
+              echo 'Using Cloudflare Tunnel setup' && \
+              docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.cloudflare.yml up -d --build; \
+            else \
+              echo 'Using standard production setup (no Cloudflare Tunnel)' && \
+              docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build; \
+            fi"
 
   deploy-prod:
     name: Deploy Prod
@@ -122,8 +141,27 @@ jobs:
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
             .env.prod ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/.env.prod
 
+      - name: Verify server prerequisites
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "cd ${{ secrets.DEPLOY_PATH }} && \
+            echo '=== Checking prerequisites ===' && \
+            docker --version || (echo 'ERROR: Docker not found' && exit 1) && \
+            docker compose version || (echo 'ERROR: Docker Compose not found' && exit 1) && \
+            test -f docker-compose.prod.yml || (echo 'ERROR: docker-compose.prod.yml not found' && exit 1) && \
+            echo 'Prerequisites OK'"
+
       - name: Build and run on server
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "cd ${{ secrets.DEPLOY_PATH }} && docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.cloudflare.yml up -d --build"
+            "cd ${{ secrets.DEPLOY_PATH }} && \
+            set -e && \
+            if [ -f docker-compose.cloudflare.yml ] && grep -q 'CLOUDFLARE_TUNNEL_TOKEN=' .env.prod 2>/dev/null && [ -n \"\$(grep 'CLOUDFLARE_TUNNEL_TOKEN=' .env.prod | cut -d'=' -f2 | tr -d ' ')\" ]; then \
+              echo 'Using Cloudflare Tunnel setup' && \
+              docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.cloudflare.yml up -d --build; \
+            else \
+              echo 'Using standard production setup (no Cloudflare Tunnel)' && \
+              docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build; \
+            fi"
