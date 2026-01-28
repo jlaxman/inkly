@@ -10,6 +10,12 @@ const prisma = new PrismaClient();
 // - Custom logos visible on products
 // - Realistic e-commerce photography
 
+// Helper function to generate SKU
+function generateSKU(category: string, index: number): string {
+  const prefix = category.substring(0, 3).toUpperCase();
+  return `${prefix}-${String(index + 1).padStart(4, '0')}`;
+}
+
 const products = [
   // ========== APPARELS ==========
   {
@@ -17,6 +23,15 @@ const products = [
     description: 'Premium quality 100% cotton round neck t-shirt with custom logo printing. Perfect for corporate branding, events, and team uniforms. Available in multiple colors and sizes.',
     price: 499.00,
     category: 'apparels',
+    subcategory: 't-shirts',
+    sku: generateSKU('apparels', 0),
+    stock: 100,
+    minOrderQty: 1,
+    material: '100% Premium Cotton',
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    colors: ['Black', 'White', 'Navy Blue', 'Gray', 'Red'],
+    expressDelivery: true,
+    expressDeliveryHours: 4,
     images: [
       'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&h=800&fit=crop',
       'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=800&h=800&fit=crop',
@@ -27,6 +42,15 @@ const products = [
     description: 'Professional polo t-shirt with custom embroidery or printing. Ideal for corporate wear, sports teams, and branded merchandise. Premium fabric with collar design.',
     price: 899.00,
     category: 'apparels',
+    subcategory: 'polo-shirts',
+    sku: generateSKU('apparels', 1),
+    stock: 75,
+    minOrderQty: 1,
+    material: 'Premium Cotton Blend',
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    colors: ['Navy Blue', 'White', 'Black', 'Gray', 'Maroon'],
+    expressDelivery: true,
+    expressDeliveryHours: 4,
     images: [
       'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&h=800&fit=crop',
       'https://images.unsplash.com/photo-1603252109303-2751441dd157?w=800&h=800&fit=crop',
@@ -559,11 +583,23 @@ async function main() {
   await prisma.product.deleteMany({});
   console.log('✅ Cleared existing products');
 
-  // Create products
+  // Create products with enhanced data
   console.log(`📦 Creating ${products.length} products...`);
-  for (const product of products) {
+  for (let i = 0; i < products.length; i++) {
+    const product = products[i];
+    // Ensure SKU is set if not provided
+    const productData = {
+      ...product,
+      sku: product.sku || generateSKU(product.category, i),
+      stock: product.stock ?? Math.floor(Math.random() * 100) + 10,
+      minOrderQty: product.minOrderQty ?? 1,
+      sizes: product.sizes ?? [],
+      colors: product.colors ?? [],
+      expressDelivery: product.expressDelivery ?? false,
+      expressDeliveryHours: product.expressDeliveryHours ?? null,
+    };
     await prisma.product.create({
-      data: product,
+      data: productData,
     });
   }
   console.log(`✅ Created ${products.length} products`);

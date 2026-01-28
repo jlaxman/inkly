@@ -47,6 +47,8 @@ export const authApi = {
     api.post('/auth/register', data),
   login: (data: { email: string; password: string }) =>
     api.post('/auth/login', data),
+  googleAuth: (data: { googleId: string; email: string; name: string; picture?: string }) =>
+    api.post('/auth/google', data),
 };
 
 export const cartApi = {
@@ -68,4 +70,13 @@ export const ordersApi = {
 export const usersApi = {
   getProfile: () => api.get('/users/me'),
   updateProfile: (data: any) => api.patch('/users/me', data),
+};
+
+export const paymentsApi = {
+  createPayment: (data: { orderId: string; amount: number; paymentMethod: string }) =>
+    api.post('/payments/create', data),
+  verifyPayment: (paymentId: string, orderId: string) =>
+    api.post(`/payments/verify/${paymentId}`, { orderId }),
+  getPaymentStatus: (orderId: string) =>
+    api.get(`/payments/status/${orderId}`),
 };

@@ -29,4 +29,14 @@ export class AuthController {
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
+
+  @Public()
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Google OAuth login/register' })
+  @ApiResponse({ status: 200, description: 'User successfully authenticated with Google' })
+  @ApiResponse({ status: 401, description: 'Invalid Google token' })
+  async googleAuth(@Body() body: { googleId: string; email: string; name: string; picture?: string }) {
+    return this.authService.googleAuthWithInfo(body.googleId, body.email, body.name, body.picture);
+  }
 }

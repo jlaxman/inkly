@@ -13,6 +13,7 @@ import { CartModule } from './modules/cart/cart.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { UsersModule } from './modules/users/users.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -42,6 +43,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     OrdersModule,
     UsersModule,
     UploadModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -13,9 +13,11 @@ datasource db {
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
-  password  String
+  password  String?
+  googleId  String?  @unique
   name      String?
   role      UserRole @default(CUSTOMER)
+  phone     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -31,15 +33,24 @@ enum UserRole {
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  price       Float
-  category    String
-  images      String[]
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  price         Float
+  category      String
+  subcategory   String?
+  images        String[]
+  sku           String?  @unique
+  stock         Int      @default(0)
+  minOrderQty   Int      @default(1)
+  material      String?
+  sizes         String[] // e.g., ["S", "M", "L", "XL"]
+  colors        String[] // e.g., ["Black", "White", "Blue"]
+  expressDelivery Boolean @default(false)
+  expressDeliveryHours Int? // e.g., 4 for 4-hour delivery
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   cartItems CartItem[]
   orderItems OrderItem[]
@@ -64,23 +75,31 @@ model CartItem {
   cartId    String
   productId String
   quantity  Int      @default(1)
+  size      String?  // Selected size variant
+  color     String?  // Selected color variant
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@unique([cartId, productId])
+  @@unique([cartId, productId, size, color])
   @@map("cart_items")
 }
 
 model Order {
-  id         String      @id @default(cuid())
-  userId     String
-  status     OrderStatus @default(PENDING)
-  total      Float
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  userId          String
+  status          OrderStatus @default(PENDING)
+  total           Float
+  paymentMethod   PaymentMethod @default(UPI)
+  paymentStatus   PaymentStatus @default(PENDING)
+  paymentId       String? // Razorpay/PhonePe payment ID
+  shippingAddress Json? // {street, city, state, pincode, phone}
+  expressDelivery Boolean @default(false)
+  trackingNumber  String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   user  User       @relation(fields: [userId], references: [id])
   items OrderItem[]
@@ -94,6 +113,8 @@ model OrderItem {
   productId String
   quantity  Int
   price     Float
+  size      String?  // Selected size variant
+  color     String?  // Selected color variant
   createdAt DateTime @default(now())
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -108,4 +129,19 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+}
+
+enum PaymentMethod {
+  UPI
+  PHONEPE
+  RAZORPAY
+  CARD
+  CASH_ON_DELIVERY
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
 }
